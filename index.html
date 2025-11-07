@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Level Up</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Roboto', 'sans-serif'],
+              display: ['Orbitron', 'sans-serif'],
+            },
+            colors: {
+              accent: {
+                '50': '#f0f9ff', '100': '#e0f2fe', '200': '#bae6fd', '300': '#7dd3fc', '400': '#38bdf8', '500': '#0ea5e9', '600': '#0284c7', '700': '#0369a1', '800': '#075985', '900': '#0c4a6e', '950': '#082f49',
+              },
+              violet: {
+                '50': '#f5f3ff', '100': '#ede9fe', '200': '#ddd6fe', '300': '#c4b5fd', '400': '#a78bfa', '500': '#8b5cf6', '600': '#7c3aed', '700': '#6d28d9', '800': '#5b21b6', '900': '#4c1d95', '950': '#2e1065'
+              }
+            },
+            keyframes: {
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px) scale(0.98)' },
+                '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+              },
+              glow: {
+                '0%, 100%': { textShadow: '0 0 4px rgba(56, 189, 248, 0.4), 0 0 8px rgba(56, 189, 248, 0.4), 0 0 16px rgba(56, 189, 248, 0.4)' },
+                '50%': { textShadow: '0 0 8px rgba(56, 189, 248, 0.7), 0 0 16px rgba(56, 189, 248, 0.7), 0 0 32px rgba(56, 189, 248, 0.7)' }
+              },
+              levelUp: {
+                '0%': { transform: 'scale(0.5) translateY(50px)', opacity: '0' },
+                '20%': { transform: 'scale(1.2) translateY(0)', opacity: '1' },
+                '80%': { transform: 'scale(1.2) translateY(0)', opacity: '1' },
+                '100%': { transform: 'scale(1.5) translateY(-20px)', opacity: '0' }
+              },
+              shimmer: {
+                '0%': { backgroundPosition: '-1000px 0' },
+                '100%': { backgroundPosition: '1000px 0' }
+              },
+              borderPulse: {
+                '0%, 100%': { borderColor: 'rgba(2, 132, 199, 0.5)', boxShadow: '0 0 5px rgba(2, 132, 199, 0.3)' },
+                '50%': { borderColor: 'rgba(56, 189, 248, 1)', boxShadow: '0 0 15px rgba(56, 189, 248, 0.7)' }
+              }
+            },
+            animation: {
+              fadeInUp: 'fadeInUp 0.5s ease-out forwards',
+              glow: 'glow 2s ease-in-out infinite',
+              levelUp: 'levelUp 2.5s ease-in-out forwards',
+              shimmer: 'shimmer 15s linear infinite',
+              borderPulse: 'borderPulse 2s ease-in-out infinite',
+            }
+          }
+        }
+      }
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react/": "https://aistudiocdn.com/react@^19.2.0/",
+          "react": "https://aistudiocdn.com/react@^19.2.0",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-slate-950 bg-[radial-gradient(at_top_left,_rgba(124,58,237,0.15),_transparent_30%),radial-gradient(at_bottom_right,_rgba(20,184,166,0.15),_transparent_40%)]">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
