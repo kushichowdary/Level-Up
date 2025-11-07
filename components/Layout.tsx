@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BarChartIcon, SwordsIcon, BookOpenIcon, SettingsIcon, SunIcon, MoonIcon, LogoutIcon } from './Icons';
 
-type Page = 'dashboard' | 'tasks' | 'history' | 'settings';
+type Page = 'dashboard' | 'goals' | 'history' | 'settings';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -13,14 +13,14 @@ interface LayoutProps {
 
 const navItems = [
     { id: 'dashboard', label: 'Status', icon: BarChartIcon },
-    { id: 'tasks', label: 'Daily Quests', icon: SwordsIcon },
-    { id: 'history', label: 'Quest Log', icon: BookOpenIcon },
+    { id: 'goals', label: 'Daily Goals', icon: SwordsIcon },
+    { id: 'history', label: 'Goal Archive', icon: BookOpenIcon },
 ] as const;
 
 
 export const Layout: React.FC<LayoutProps> = ({ children, activePage, setPage }) => {
     const { logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { theme } = useTheme();
 
     const SidebarContent = () => (
         <>

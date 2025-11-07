@@ -14,7 +14,7 @@ const Tooltip: React.FC<{ x: number, y: number, content: React.ReactNode }> = ({
 };
 
 const CalendarHeatmap: React.FC = () => {
-    const { completions, tasks } = useData();
+    const { completions, goals } = useData();
     const [year, setYear] = useState(new Date().getFullYear());
     const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; content: React.ReactNode }>({
         visible: false, x: 0, y: 0, content: null
@@ -59,23 +59,24 @@ const CalendarHeatmap: React.FC = () => {
     }, [year, dataByDate]);
 
 
-    const getLevel = (count: number) => {
-        if (count === 0) return 'bg-slate-800/50';
-        if (count < 2) return 'bg-cyan-900 shadow-[inset_0_0_2px_rgba(56,189,248,0.5)]';
-        if (count < 4) return 'bg-cyan-700 shadow-[inset_0_0_4px_rgba(56,189,248,0.7)]';
-        return 'bg-cyan-500 shadow-[inset_0_0_6px_rgba(56,189,248,1)]';
+    const getLevel = (totalExp: number) => {
+        if (totalExp === 0) return 'bg-slate-800/50';
+        if (totalExp <= 25) return 'bg-cyan-900 shadow-[inset_0_0_2px_rgba(56,189,248,0.5)]';
+        if (totalExp <= 75) return 'bg-cyan-700 shadow-[inset_0_0_4px_rgba(56,189,248,0.7)]';
+        if (totalExp <= 150) return 'bg-cyan-500 shadow-[inset_0_0_6px_rgba(56,189,248,1)]';
+        return 'bg-yellow-400 shadow-[inset_0_0_8px_rgba(250,204,21,1)]'; // Legendary day
     };
     
     const handleMouseEnter = (e: React.MouseEvent, day: typeof days[0]) => {
         if (day.count === 0) return;
-        const completedTasks = day.completions.map(c => tasks.find(t => t.id === c.taskId)?.title).filter(Boolean);
+        const completedGoals = day.completions.map(c => goals.find(t => t.id === c.taskId)?.title).filter(Boolean);
         const content = (
             <div className="flex flex-col gap-1 max-w-xs">
                 <p className="font-bold">{new Date(day.dateString + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 <p className="font-bold text-cyan-400">+{day.totalExp} EXP</p>
-                <p className="text-xs text-slate-300 border-t border-slate-600 pt-1 mt-1">{day.count} {day.count === 1 ? 'quest' : 'quests'} completed:</p>
+                <p className="text-xs text-slate-300 border-t border-slate-600 pt-1 mt-1">{day.count} {day.count === 1 ? 'goal' : 'goals'} completed:</p>
                 <ul className="text-xs list-disc list-inside space-y-0.5">
-                    {completedTasks.map((title, i) => <li key={i}>{title}</li>)}
+                    {completedGoals.map((title, i) => <li key={i}>{title}</li>)}
                 </ul>
             </div>
         );
@@ -111,7 +112,7 @@ const CalendarHeatmap: React.FC = () => {
                         {days.map(day => (
                             <div
                                 key={day.dateString}
-                                className={`w-4 h-4 rounded transition-transform duration-150 hover:scale-125 ${getLevel(day.count)}`}
+                                className={`w-4 h-4 rounded transition-transform duration-150 hover:scale-125 ${getLevel(day.totalExp)}`}
                                 onMouseEnter={(e) => handleMouseEnter(e, day)}
                                 onMouseLeave={handleMouseLeave}
                             ></div>
@@ -122,10 +123,11 @@ const CalendarHeatmap: React.FC = () => {
             <div className="flex justify-end items-center mt-4 text-xs space-x-2 text-slate-500">
                 <span>Less</span>
                 <div className={`w-3 h-3 rounded ${getLevel(0)}`}></div>
-                <div className={`w-3 h-3 rounded ${getLevel(1)}`}></div>
-                <div className={`w-3 h-3 rounded ${getLevel(3)}`}></div>
-                <div className={`w-3 h-3 rounded ${getLevel(5)}`}></div>
-                <span>More</span>
+                <div className={`w-3 h-3 rounded ${getLevel(10)}`}></div>
+                <div className={`w-3 h-3 rounded ${getLevel(50)}`}></div>
+                <div className={`w-3 h-3 rounded ${getLevel(100)}`}></div>
+                 <div className={`w-3 h-3 rounded ${getLevel(200)}`}></div>
+                <span>More (EXP)</span>
             </div>
              {tooltip.visible && <Tooltip x={tooltip.x} y={tooltip.y} content={tooltip.content} />}
         </div>
@@ -136,7 +138,7 @@ const CalendarHeatmap: React.FC = () => {
 const HistoryPage: React.FC = () => {
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold font-display text-slate-100">Quest Log</h1>
+            <h1 className="text-3xl font-bold font-display text-slate-100">Goal Archive</h1>
             <CalendarHeatmap />
         </div>
     );

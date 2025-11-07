@@ -4,12 +4,12 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { DataProvider } from './contexts/DataContext';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
-import TasksPage from './pages/TasksPage';
+import GoalsPage from './pages/TasksPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import { Layout } from './components/Layout';
 
-type Page = 'dashboard' | 'tasks' | 'history' | 'settings';
+type Page = 'dashboard' | 'goals' | 'history' | 'settings';
 
 const AppContent: React.FC = () => {
     const { user } = useAuth();
@@ -29,7 +29,7 @@ const AppContent: React.FC = () => {
         const pageComponent = () => {
             switch (page) {
                 case 'dashboard': return <DashboardPage />;
-                case 'tasks': return <TasksPage />;
+                case 'goals': return <GoalsPage />;
                 case 'history': return <HistoryPage />;
                 case 'settings': return <SettingsPage />;
                 default: return <DashboardPage />;

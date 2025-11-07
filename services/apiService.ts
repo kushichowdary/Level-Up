@@ -4,7 +4,8 @@ import {
     signInWithEmailAndPassword, 
     signOut,
     onAuthStateChanged as onFirebaseAuthStateChanged,
-    User as FirebaseUser
+    User as FirebaseUser,
+    deleteUser
 } from 'firebase/auth';
 import { 
     doc, 
@@ -16,13 +17,11 @@ import {
     getDocs,
     writeBatch,
     addDoc,
-    updateDoc,
     deleteDoc,
-    Timestamp,
 } from 'firebase/firestore';
 
-import { User, Task, Completion, UserSettings, TaskStatus } from '../types';
-import { EXP_BY_DIFFICULTY, SYSTEM_QUESTS } from '../constants';
+import { User, Goal, Completion, UserSettings, GoalStatus } from '../types';
+import { EXP_BY_DIFFICULTY, SYSTEM_GOALS } from '../constants';
 
 // A robust, recursive function to sanitize any data from Firestore.
 // It converts Timestamps to ISO strings and ensures that only plain objects and arrays
@@ -91,21 +90,21 @@ export const createUserProfile = async (firebaseUser: FirebaseUser, name: string
     };
     batch.set(settingsRef, userSettings);
     
-    // 3. Create System Quests with stable, user-specific IDs
-    SYSTEM_QUESTS.forEach((quest) => {
-        const questSlug = quest.title.toLowerCase().replace(/\s+/g, '-');
-        const questId = `system-${userId}-${questSlug}`;
-        const newSystemTask: Task = {
-            ...quest,
-            id: questId, // ID is now unique and stable
+    // 3. Create System Goals with stable, user-specific IDs
+    SYSTEM_GOALS.forEach((goal) => {
+        const goalSlug = goal.title.toLowerCase().replace(/\s+/g, '-');
+        const goalId = `system-${userId}-${goalSlug}`;
+        const newSystemGoal: Goal = {
+            ...goal,
+            id: goalId, // ID is now unique and stable
             userId: userId,
             createdAt: new Date().toISOString(),
-            status: TaskStatus.Active,
+            status: GoalStatus.Active,
             weekdays: [],
             type: 'system'
         };
-        const taskRef = doc(db, 'tasks', questId);
-        batch.set(taskRef, newSystemTask);
+        const goalRef = doc(db, 'tasks', goalId);
+        batch.set(goalRef, newSystemGoal);
     });
 
     await batch.commit();
@@ -124,17 +123,44 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
 
 export const updateUserProfile = async (user: User): Promise<User> => {
     const userRef = doc(db, 'users', user.id);
-    // Defensively create a new, clean object to ensure no circular references or complex objects are passed to Firestore.
-    const cleanUser: User = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt,
-        timezone: user.timezone,
-    };
-    await setDoc(userRef, cleanUser, { merge: true });
-    return cleanUser;
+    const { id, ...profileData } = user;
+    await setDoc(userRef, profileData, { merge: true });
+    // Return a new, guaranteed-clean object instead of the original `user` object.
+    // This prevents any possibility of non-serializable data being passed back into the application state.
+    return { id, ...profileData };
 };
+
+export const deleteUserAccount = async (userId: string): Promise<void> => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser || firebaseUser.uid !== userId) {
+        throw new Error("Authentication error: Cannot delete account.");
+    }
+    
+    const batch = writeBatch(db);
+
+    // 1. Delete user profile
+    batch.delete(doc(db, 'users', userId));
+
+    // 2. Delete settings
+    batch.delete(doc(db, 'settings', userId));
+
+    // 3. Delete all goals (tasks collection)
+    const goalsQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
+    const goalsSnap = await getDocs(goalsQuery);
+    goalsSnap.forEach(doc => batch.delete(doc.ref));
+
+    // 4. Delete all completions
+    const completionsQuery = query(collection(db, 'completions'), where('userId', '==', userId));
+    const completionsSnap = await getDocs(completionsQuery);
+    completionsSnap.forEach(doc => batch.delete(doc.ref));
+    
+    // Commit all Firestore deletions
+    await batch.commit();
+
+    // 5. Delete the user from Firebase Auth
+    await deleteUser(firebaseUser);
+};
+
 
 // Data Functions
 export const fetchAllData = async (userId: string) => {
@@ -148,7 +174,7 @@ export const fetchAllData = async (userId: string) => {
             allowFreezeDays: false,
         };
         return { 
-            tasks: [], 
+            goals: [], 
             completions: [], 
             settings
         };
@@ -156,72 +182,78 @@ export const fetchAllData = async (userId: string) => {
 
     const settings = sanitizeDoc(settingsSnap.data()) as UserSettings;
 
-    const tasksQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
-    const tasksSnap = await getDocs(tasksQuery);
-    const tasks: Task[] = tasksSnap.docs.map(d => sanitizeDoc({ id: d.id, ...d.data() }) as Task);
+    const goalsQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
+    const goalsSnap = await getDocs(goalsQuery);
+    const goals: Goal[] = goalsSnap.docs.map(d => {
+        const data = sanitizeDoc(d.data());
+        return { id: d.id, ...data } as Goal;
+    });
     
     const completionsQuery = query(collection(db, 'completions'), where('userId', '==', userId));
     const completionsSnap = await getDocs(completionsQuery);
-    const completions: Completion[] = completionsSnap.docs.map(d => sanitizeDoc({ id: d.id, ...d.data() }) as Completion);
+    const completions: Completion[] = completionsSnap.docs.map(d => {
+        const data = sanitizeDoc(d.data());
+        return { id: d.id, ...data } as Completion;
+    });
 
-    return { tasks, completions, settings };
+    return { goals, completions, settings };
 };
 
 
-// Task Functions
-export const saveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'userId'>, userId: string): Promise<Task> => {
-    const taskCollRef = collection(db, 'tasks');
-    const docRef = await addDoc(taskCollRef, {
-        ...taskData,
+// Goal Functions
+export const saveGoal = async (goalData: Omit<Goal, 'id' | 'createdAt' | 'userId'>, userId: string): Promise<Goal> => {
+    const goalCollRef = collection(db, 'tasks');
+    const docRef = await addDoc(goalCollRef, {
+        ...goalData,
         userId,
         createdAt: new Date().toISOString(),
         type: 'user'
     });
-    return { ...taskData, id: docRef.id, createdAt: new Date().toISOString(), userId, type: 'user' };
+    return { ...goalData, id: docRef.id, createdAt: new Date().toISOString(), userId, type: 'user' };
 };
 
-export const updateTask = async (task: Task): Promise<Task> => {
-    const taskRef = doc(db, 'tasks', task.id);
+export const updateGoal = async (goal: Goal): Promise<Goal> => {
+    const goalRef = doc(db, 'tasks', goal.id);
 
-    // Defensively create a clean data object from the input to prevent circular structure errors.
-    const cleanData: any = {
-        userId: task.userId,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        scheduleType: task.scheduleType,
-        weekdays: task.weekdays,
-        createdAt: task.createdAt,
-        difficulty: task.difficulty,
-        priority: task.priority,
-        type: task.type,
-        category: task.category,
-    };
+    // Deep clone and sanitize before sending to Firestore
+    const cleanData = sanitizeDoc({
+        userId: goal.userId,
+        title: goal.title,
+        description: goal.description,
+        status: goal.status,
+        scheduleType: goal.scheduleType,
+        weekdays: goal.weekdays || [],
+        createdAt: goal.createdAt,
+        difficulty: goal.difficulty,
+        priority: goal.priority,
+        type: goal.type,
+        category: goal.category,
+    });
 
-    // Firestore SDK throws an error for undefined fields.
+    // Remove undefined fields, as Firestore doesn't allow them
     Object.keys(cleanData).forEach(key => {
         if (cleanData[key] === undefined) {
             delete cleanData[key];
         }
     });
 
-    await setDoc(taskRef, cleanData, { merge: true });
-    return { id: task.id, ...cleanData } as Task;
+    await setDoc(goalRef, cleanData, { merge: true });
+    return { id: goal.id, ...cleanData } as Goal;
 };
 
-export const deleteTask = async (taskId: string): Promise<void> => {
+export const deleteGoal = async (goalId: string): Promise<void> => {
     // Also delete associated completions
-    const completionsQuery = query(collection(db, 'completions'), where('taskId', '==', taskId));
+    const completionsQuery = query(collection(db, 'completions'), where('taskId', '==', goalId));
     const completionsSnap = await getDocs(completionsQuery);
     const batch = writeBatch(db);
     completionsSnap.forEach(doc => batch.delete(doc.ref));
-    batch.delete(doc(db, 'tasks', taskId));
+    batch.delete(doc(db, 'tasks', goalId));
     await batch.commit();
 };
 
 // Completion Functions
-export const addCompletion = async (completionData: Omit<Completion, 'id' | 'userId' | 'completedAt' | 'expAwarded'>, userId: string, task: Task): Promise<Completion> => {
-    const expAwarded = EXP_BY_DIFFICULTY[task.difficulty];
+export const addCompletion = async (completionData: Omit<Completion, 'id' | 'userId' | 'completedAt' | 'expAwarded'>, userId: string, goal: Goal): Promise<Completion> => {
+    const expAwarded = EXP_BY_DIFFICULTY[goal.difficulty];
     const newCompletionData = {
         ...completionData,
         userId,
@@ -235,19 +267,22 @@ export const addCompletion = async (completionData: Omit<Completion, 'id' | 'use
 // Settings Functions
 export const updateSettings = async (settings: UserSettings): Promise<UserSettings> => {
     const settingsRef = doc(db, 'settings', settings.userId);
-    // Defensively create a clean object to ensure no circular references or complex objects are passed to Firestore.
-    const cleanData: any = {
+    
+    // Deep clone and sanitize before sending to Firestore
+    const cleanData = sanitizeDoc({
         userId: settings.userId,
         theme: settings.theme,
         allowFreezeDays: settings.allowFreezeDays,
         dailyReminderTime: settings.dailyReminderTime,
-    };
-    // Remove undefined fields.
+    });
+    
+    // Remove undefined fields
     Object.keys(cleanData).forEach(key => {
         if (cleanData[key] === undefined) {
             delete cleanData[key];
         }
     });
+
     await setDoc(settingsRef, cleanData, { merge: true });
     return cleanData as UserSettings;
 };

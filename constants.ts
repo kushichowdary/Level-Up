@@ -1,20 +1,20 @@
-import { Task, ScheduleType, TaskDifficulty, LevelInfo, TaskPriority } from './types';
+import { Goal, ScheduleType, GoalDifficulty, LevelInfo, GoalPriority } from './types';
 
-export const EXP_BY_DIFFICULTY: Record<TaskDifficulty, number> = {
-    [TaskDifficulty.Easy]: 10,
-    [TaskDifficulty.Medium]: 25,
-    [TaskDifficulty.Hard]: 50,
+export const EXP_BY_DIFFICULTY: Record<GoalDifficulty, number> = {
+    [GoalDifficulty.Easy]: 10,
+    [GoalDifficulty.Medium]: 25,
+    [GoalDifficulty.Hard]: 50,
 };
 
-export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' | 'weekdays'>[] = [
+export const SYSTEM_GOALS: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'status' | 'weekdays'>[] = [
     {
         title: "100 Push-ups",
         description: "A core physical strengthening exercise.",
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: TaskDifficulty.Hard,
-        priority: TaskPriority.High,
+        difficulty: GoalDifficulty.Hard,
+        priority: GoalPriority.High,
     },
     {
         title: "100 Sit-ups",
@@ -22,8 +22,8 @@ export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' 
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: TaskDifficulty.Hard,
-        priority: TaskPriority.High,
+        difficulty: GoalDifficulty.Hard,
+        priority: GoalPriority.High,
     },
     {
         title: "10km Run",
@@ -31,8 +31,8 @@ export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' 
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: TaskDifficulty.Hard,
-        priority: TaskPriority.High,
+        difficulty: GoalDifficulty.Hard,
+        priority: GoalPriority.High,
     },
     {
         title: "Walk 5000 steps",
@@ -40,8 +40,8 @@ export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' 
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: TaskDifficulty.Medium,
-        priority: TaskPriority.Medium,
+        difficulty: GoalDifficulty.Medium,
+        priority: GoalPriority.Medium,
     },
     {
         title: "Read for 15 minutes",
@@ -49,8 +49,8 @@ export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' 
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'mental',
-        difficulty: TaskDifficulty.Easy,
-        priority: TaskPriority.Low,
+        difficulty: GoalDifficulty.Easy,
+        priority: GoalPriority.Low,
     },
     {
         title: "Meditate for 10 minutes",
@@ -58,8 +58,8 @@ export const SYSTEM_QUESTS: Omit<Task, 'id' | 'userId' | 'createdAt' | 'status' 
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'mental',
-        difficulty: TaskDifficulty.Easy,
-        priority: TaskPriority.Low,
+        difficulty: GoalDifficulty.Easy,
+        priority: GoalPriority.Low,
     },
 ];
 

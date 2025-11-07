@@ -8,7 +8,7 @@ export interface User {
   timezone: string;
 }
 
-export enum TaskStatus {
+export enum GoalStatus {
   Active = 'active',
   Paused = 'paused',
 }
@@ -18,29 +18,29 @@ export enum ScheduleType {
   Weekly = 'weekly',
 }
 
-export enum TaskDifficulty {
+export enum GoalDifficulty {
   Easy = 'easy',
   Medium = 'medium',
   Hard = 'hard',
 }
 
-export enum TaskPriority {
+export enum GoalPriority {
   Low = 'low',
   Medium = 'medium',
   High = 'high',
 }
 
-export interface Task {
+export interface Goal {
   id: string;
   userId: string;
   title: string;
   description: string;
-  status: TaskStatus;
+  status: GoalStatus;
   scheduleType: ScheduleType;
   weekdays: number[]; // 0 for Sunday, 1 for Monday, etc.
   createdAt: string;
-  difficulty: TaskDifficulty;
-  priority: TaskPriority;
+  difficulty: GoalDifficulty;
+  priority: GoalPriority;
   type?: 'user' | 'system';
   category?: 'physical' | 'mental';
 }
@@ -68,7 +68,7 @@ export interface UserSettings {
   dailyReminderTime?: string; // HH:mm
 }
 
-export interface TaskWithCompletion extends Task {
+export interface GoalWithCompletion extends Goal {
     completion?: Completion;
 }
 
@@ -78,4 +78,13 @@ export interface LevelInfo {
     expToNextLevel: number;
     currentLevelExp: number;
     progressPercentage: number;
+}
+
+export interface UserStats {
+    totalGoalsCompleted: number;
+    currentStreak: number;
+    longestStreak: number;
+    hardGoalsCompleted: number;
+    physicalGoalsCompleted: number;
+    mentalGoalsCompleted: number;
 }

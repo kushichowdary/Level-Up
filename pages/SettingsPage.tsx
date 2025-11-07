@@ -5,9 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { UserSettings } from '../types';
 
 const SettingsPage: React.FC = () => {
-    const { settings, updateSettings, completions, tasks } = useData();
+    const { settings, updateSettings, completions, goals } = useData();
     const { theme } = useTheme(); // Theme is now fixed to dark
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, deleteAccount } = useAuth();
     
     const [profileName, setProfileName] = useState(user?.name || '');
     const [profileEmail, setProfileEmail] = useState(user?.email || '');
@@ -29,10 +29,10 @@ const SettingsPage: React.FC = () => {
     }
 
     const handleExport = () => {
-        const headers = ["date", "quest_title", "status", "note", "exp_awarded"];
+        const headers = ["date", "goal_title", "status", "note", "exp_awarded"];
         const rows = completions.map(c => {
-            const task = tasks.find(t => t.id === c.taskId);
-            return [c.date, task?.title || 'N/A', c.status, c.note || '', c.expAwarded].join(',');
+            const goal = goals.find(t => t.id === c.taskId);
+            return [c.date, goal?.title || 'N/A', c.status, c.note || '', c.expAwarded].join(',');
         });
 
         const csvContent = "data:text/csv;charset=utf-s;," + headers.join(',') + "\n" + rows.join("\n");
@@ -44,6 +44,18 @@ const SettingsPage: React.FC = () => {
         link.click();
         document.body.removeChild(link);
     };
+
+    const handleDeleteAccount = () => {
+        const confirmation = window.confirm(
+            "Are you sure you want to delete your account? This action is permanent and cannot be undone."
+        );
+        if (confirmation) {
+            deleteAccount().catch(err => {
+                console.error("Failed to delete account:", err);
+                alert("Failed to delete account. Please try logging out and back in again.");
+            });
+        }
+    }
 
     if (!settings || !user) {
         return <div>Loading config...</div>;
@@ -70,7 +82,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-slate-300">Email</label>
-                        <input type="email" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} disabled className={`${inputClass} opacity-60 cursor-not-allowed`} />
+                        <input type="email" value={profileEmail} disabled className={`${inputClass} opacity-60 cursor-not-allowed`} />
                     </div>
                      <div className="flex justify-end">
                          <button
@@ -89,16 +101,19 @@ const SettingsPage: React.FC = () => {
                     onClick={handleExport}
                     className="w-full px-4 py-2 bg-cyan-600/80 text-white rounded-lg font-semibold hover:bg-cyan-600 transition-colors"
                 >
-                    Export All Quest Data as CSV
+                    Export All Goal Data as CSV
                 </button>
             </Panel>
             
             <div className="p-6 bg-red-900/20 border-2 border-red-500/50 rounded-2xl animate-borderPulse" style={{animationDuration: '3s'}}>
                 <h2 className="text-lg font-semibold font-display text-red-300 mb-2">Danger Zone</h2>
                 <p className="text-sm text-red-400 mb-4">
-                    Deleting your account is permanent and cannot be undone. All your quest data and EXP will be lost.
+                    Deleting your account is permanent and cannot be undone. All your goal data and EXP will be lost.
                 </p>
-                <button className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors">
+                <button 
+                    onClick={handleDeleteAccount}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                >
                     Delete My Account
                 </button>
             </div>
