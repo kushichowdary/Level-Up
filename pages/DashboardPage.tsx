@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,10 +5,11 @@ import { isTaskDueToday, getTodayDateString } from '../utils/dateUtils';
 import { Task, TaskWithCompletion, CompletionStatus, TaskDifficulty, TaskPriority } from '../types';
 import { CheckCircleIcon, ChevronDownIcon, PlusIcon } from '../components/Icons';
 import { EXP_BY_DIFFICULTY } from '../constants';
+import { playCompletionSound } from '../utils/soundUtils';
 
 const usePrevious = <T,>(value: T): T | undefined => {
-    const ref = useRef<T>();
-    // FIX: Added `value` to the dependency array. The `useEffect` hook depends on the `value` variable and should re-run whenever it changes. This is a React best practice and resolves the likely misreported error.
+    // FIX: Explicitly provide an initial value to `useRef` to fix the "Expected 1 arguments, but got 0" error.
+    const ref = useRef<T | undefined>(undefined);
     useEffect(() => {
         ref.current = value;
     }, [value]);
@@ -43,6 +42,16 @@ const CompletionModal: React.FC<{ task: Task, onConfirm: (taskId: string, note?:
 
 const QuestItem: React.FC<{ task: TaskWithCompletion, onCompleteClick: (task: Task) => void }> = ({ task, onCompleteClick }) => {
     const isCompleted = task.completion?.status === CompletionStatus.Completed;
+    const wasJustCompleted = usePrevious(isCompleted) === false && isCompleted === true;
+    const [isAnimating, setIsAnimating] = useState(false);
+
+    useEffect(() => {
+        if (wasJustCompleted) {
+            setIsAnimating(true);
+            const timer = setTimeout(() => setIsAnimating(false), 600); // match animation duration
+            return () => clearTimeout(timer);
+        }
+    }, [wasJustCompleted]);
     
     const difficultyStyles: Record<TaskDifficulty, string> = {
         [TaskDifficulty.Easy]: 'text-green-400 border-green-400/50 bg-green-500/10',
@@ -57,7 +66,7 @@ const QuestItem: React.FC<{ task: TaskWithCompletion, onCompleteClick: (task: Ta
     };
 
     return (
-        <div className={`p-4 rounded-lg flex items-center justify-between transition-all duration-300 border border-transparent ${isCompleted ? 'bg-green-500/10 ' : 'bg-slate-800/50 hover:bg-slate-800/80 hover:border-cyan-500/30 hover:-translate-y-0.5'}`}>
+        <div className={`p-4 rounded-lg flex items-center justify-between transition-all duration-300 border border-transparent ${isCompleted ? 'bg-green-500/10 ' : 'bg-slate-800/50 hover:bg-slate-800/80 hover:border-cyan-500/30 hover:-translate-y-0.5'} ${isAnimating ? 'animate-questComplete' : ''}`}>
             <div>
                 <h3 className={`font-semibold text-slate-100 ${isCompleted ? 'line-through text-slate-500' : ''}`}>{task.title}</h3>
                 <p className={`text-sm text-slate-400 ${isCompleted ? 'line-through' : ''}`}>{task.description}</p>
@@ -78,7 +87,7 @@ const QuestItem: React.FC<{ task: TaskWithCompletion, onCompleteClick: (task: Ta
                 onClick={() => onCompleteClick(task)}
                 disabled={isCompleted}
                 aria-label={`Complete quest: ${task.title}`}
-                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-300 transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500 ${isCompleted ? 'bg-green-500 text-white scale-100 cursor-default' : 'bg-slate-700 text-slate-400 hover:bg-cyan-500 hover:text-white hover:scale-110'}`}
+                className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-300 transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-cyan-500 ${isCompleted ? 'bg-green-500 text-white scale-100 cursor-default' : 'bg-slate-700 text-slate-400 hover:bg-cyan-500 hover:text-white hover:scale-110'} ${isAnimating ? 'animate-checkmarkPop' : ''}`}
             >
                 <CheckCircleIcon className="w-6 h-6" />
             </button>
@@ -159,6 +168,7 @@ const DashboardPage: React.FC = () => {
     const handleConfirmComplete = async (taskId: string, note?: string) => {
         await completeTask(taskId, note);
         setCompletingTask(null);
+        playCompletionSound();
     };
 
     if (loading || !levelInfo) {

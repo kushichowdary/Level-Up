@@ -19,7 +19,30 @@ const AuthPage: React.FC = () => {
         await signup(name, email, password);
       }
     } catch (err: any) {
-      setError(err.message);
+      switch (err.code) {
+        case 'auth/invalid-credential':
+          setError('Invalid email or password. Please try again.');
+          break;
+        case 'auth/user-not-found': // Kept for some edge cases
+        case 'auth/wrong-password': // Kept for some edge cases
+          setError('Invalid email or password.');
+          break;
+        case 'auth/email-already-in-use':
+          setError('An account with this email already exists.');
+          break;
+        case 'auth/weak-password':
+          setError('Password is too weak. Must be at least 6 characters.');
+          break;
+        case 'auth/invalid-email':
+          setError('Please enter a valid email address.');
+          break;
+        case 'auth/quota-exceeded':
+          setError('Too many attempts. Please try again later.');
+          break;
+        default:
+          setError('An unexpected error occurred. Please try again.');
+          console.error('Authentication Error:', err);
+      }
     }
   };
 

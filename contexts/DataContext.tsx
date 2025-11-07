@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Task, Completion, UserSettings, User, CompletionStatus, LevelInfo } from '../types';
 import { useAuth } from './AuthContext';
-import * as api from '../services/mockApiService';
+import * as api from '../services/apiService';
 import { calculateLevelInfo } from '../constants';
 import { getTodayDateString } from '../utils/dateUtils';
 
@@ -35,7 +35,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchData = useCallback(async (currentUser: User) => {
     setLoading(true);
-    const data = await api.mockFetchAllData(currentUser.id);
+    const data = await api.fetchAllData(currentUser.id);
     setTasks(data.tasks);
     setCompletions(data.completions);
     setSettings(data.settings);
@@ -49,6 +49,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTasks([]);
       setCompletions([]);
       setSettings(null);
+      setLevelInfo(null);
       setLoading(false);
     }
   }, [user, fetchData]);
@@ -61,20 +62,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'userId'>) => {
     if (!user) throw new Error("User not authenticated");
-    const newTask = await api.mockSaveTask(taskData, user.id);
+    const newTask = await api.saveTask(taskData, user.id);
     setTasks(prev => [...prev, newTask]);
   };
 
   const updateTask = async (task: Task) => {
-    if (task.type === 'system') return; // System quests are not editable
-    const updatedTask = await api.mockUpdateTask(task);
+    if (task.type === 'system') return; // System quests are not editable for now
+    const updatedTask = await api.updateTask(task);
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
   };
   
   const deleteTask = async (taskId: string) => {
     const taskToDelete = tasks.find(t => t.id === taskId);
     if (taskToDelete?.type === 'system') return; // System quests cannot be deleted
-    await api.mockDeleteTask(taskId);
+    await api.deleteTask(taskId);
     setTasks(prev => prev.filter(t => t.id !== taskId));
   };
 
@@ -89,12 +90,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: CompletionStatus.Completed,
       note,
     };
-    const newCompletion = await api.mockAddCompletion(newCompletionData, user.id, task);
+    const newCompletion = await api.addCompletion(newCompletionData, user.id, task);
     setCompletions(prev => [...prev, newCompletion]);
   };
   
   const updateSettings = async (newSettings: UserSettings) => {
-    const updated = await api.mockUpdateSettings(newSettings);
+    const updated = await api.updateSettings(newSettings);
     setSettings(updated);
   };
 
