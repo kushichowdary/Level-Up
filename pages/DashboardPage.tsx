@@ -5,7 +5,7 @@ import { isGoalDueToday, getTodayDateString } from '../utils/dateUtils';
 import { Goal, GoalWithCompletion, CompletionStatus, GoalDifficulty, GoalPriority } from '../types';
 import { CheckCircleIcon, ChevronDownIcon, PlusIcon, TrophyIcon, FlameIcon, CheckSquareIcon, DumbbellIcon, BrainIcon, AlertTriangleIcon } from '../components/Icons';
 import { EXP_BY_DIFFICULTY } from '../constants';
-import { playCompletionSound } from '../utils/soundUtils';
+import { playCompletionSound, playLevelUpSound } from '../utils/soundUtils';
 
 const usePrevious = <T,>(value: T): T | undefined => {
     const ref = useRef<T | undefined>(undefined);
@@ -142,6 +142,7 @@ const DashboardPage: React.FC = () => {
     useEffect(() => {
         if (levelInfo && prevLevel && levelInfo.level > prevLevel) {
             setShowLevelUp(true);
+            playLevelUpSound();
             const timer = setTimeout(() => setShowLevelUp(false), 2500);
             return () => clearTimeout(timer);
         }

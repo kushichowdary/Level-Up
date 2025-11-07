@@ -8,22 +8,22 @@ export const EXP_BY_DIFFICULTY: Record<GoalDifficulty, number> = {
 
 export const SYSTEM_GOALS: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'status' | 'weekdays'>[] = [
     {
-        title: "100 Push-ups",
+        title: "20 Push-ups",
         description: "A core physical strengthening exercise.",
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: GoalDifficulty.Hard,
-        priority: GoalPriority.High,
+        difficulty: GoalDifficulty.Easy,
+        priority: GoalPriority.Medium,
     },
     {
-        title: "100 Sit-ups",
+        title: "20 Sit-ups",
         description: "Strengthen your core.",
         scheduleType: ScheduleType.Daily,
         type: 'system',
         category: 'physical',
-        difficulty: GoalDifficulty.Hard,
-        priority: GoalPriority.High,
+        difficulty: GoalDifficulty.Easy,
+        priority: GoalPriority.Medium,
     },
     {
         title: "10km Run",
@@ -35,7 +35,7 @@ export const SYSTEM_GOALS: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'status' |
         priority: GoalPriority.High,
     },
     {
-        title: "Walk 5000 steps",
+        title: "Walk 7000 steps",
         description: "A great way to stay active.",
         scheduleType: ScheduleType.Daily,
         type: 'system',

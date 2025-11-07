@@ -6,7 +6,12 @@ const Tooltip: React.FC<{ x: number, y: number, content: React.ReactNode }> = ({
     return (
         <div
             className="fixed z-50 p-3 text-sm text-white bg-slate-900/90 backdrop-blur-sm rounded-lg shadow-lg border border-violet-500/20 pointer-events-none transition-opacity duration-200"
-            style={{ top: y + 15, left: x + 15, opacity: 1 }}
+            style={{
+                top: y,
+                left: x,
+                transform: 'translate(-50%, 8px)',
+                opacity: 1,
+            }}
         >
             {content}
         </div>
@@ -69,18 +74,33 @@ const CalendarHeatmap: React.FC = () => {
     
     const handleMouseEnter = (e: React.MouseEvent, day: typeof days[0]) => {
         if (day.count === 0) return;
-        const completedGoals = day.completions.map(c => goals.find(t => t.id === c.taskId)?.title).filter(Boolean);
+        
+        const completedGoalsDetails = day.completions.map(c => {
+            const goal = goals.find(t => t.id === c.taskId);
+            return goal ? { title: goal.title, expAwarded: c.expAwarded } : null;
+        }).filter((g): g is { title: string; expAwarded: number } => g !== null);
+
         const content = (
             <div className="flex flex-col gap-1 max-w-xs">
                 <p className="font-bold">{new Date(day.dateString + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 <p className="font-bold text-cyan-400">+{day.totalExp} EXP</p>
                 <p className="text-xs text-slate-300 border-t border-slate-600 pt-1 mt-1">{day.count} {day.count === 1 ? 'goal' : 'goals'} completed:</p>
-                <ul className="text-xs list-disc list-inside space-y-0.5">
-                    {completedGoals.map((title, i) => <li key={i}>{title}</li>)}
+                <ul className="text-xs list-none space-y-0.5 mt-1">
+                    {completedGoalsDetails.map((detail, i) => (
+                        <li key={i} className="flex justify-between items-center">
+                            <span className="truncate pr-2">{detail.title}</span>
+                            <span className="flex-shrink-0 font-semibold text-cyan-400/90">+{detail.expAwarded} EXP</span>
+                        </li>
+                    ))}
                 </ul>
             </div>
         );
-        setTooltip({ visible: true, x: e.clientX, y: e.clientY, content });
+        
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const tooltipX = rect.left + rect.width / 2;
+        const tooltipY = rect.bottom;
+
+        setTooltip({ visible: true, x: tooltipX, y: tooltipY, content });
     };
 
     const handleMouseLeave = () => {

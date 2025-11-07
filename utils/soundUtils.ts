@@ -39,3 +39,52 @@ export const playCompletionSound = () => {
         }
     }, 500);
 };
+
+export const playLevelUpSound = () => {
+    if (typeof window === 'undefined' || !window.AudioContext) {
+        return;
+    }
+
+    const audioContext = new window.AudioContext();
+    const masterGain = audioContext.createGain();
+    masterGain.connect(audioContext.destination);
+    masterGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+
+    const notes = [
+        { freq: 261.63, delay: 0 },      // C4
+        { freq: 329.63, delay: 0.1 },    // E4
+        { freq: 392.00, delay: 0.2 },    // G4
+        { freq: 523.25, delay: 0.3 },    // C5
+        { freq: 659.25, delay: 0.4 },    // E5
+        { freq: 783.99, delay: 0.5 },    // G5
+        { freq: 1046.50, delay: 0.6 }    // C6
+    ];
+
+    notes.forEach(note => {
+        const oscillator = audioContext.createOscillator();
+        oscillator.connect(masterGain);
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(note.freq, audioContext.currentTime + note.delay);
+        oscillator.start(audioContext.currentTime + note.delay);
+        oscillator.stop(audioContext.currentTime + note.delay + 0.15);
+    });
+
+    // Add a final "shimmer" sound
+    const shimmerOscillator = audioContext.createOscillator();
+    const shimmerGain = audioContext.createGain();
+    shimmerOscillator.connect(shimmerGain);
+    shimmerGain.connect(masterGain);
+    shimmerOscillator.type = 'sawtooth';
+    shimmerOscillator.frequency.setValueAtTime(1046.50, audioContext.currentTime + 0.7);
+    shimmerGain.gain.setValueAtTime(0.2, audioContext.currentTime + 0.7);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1.2);
+    shimmerOscillator.start(audioContext.currentTime + 0.7);
+    shimmerOscillator.stop(audioContext.currentTime + 1.2);
+
+
+    setTimeout(() => {
+        if (audioContext.state !== 'closed') {
+            audioContext.close();
+        }
+    }, 1500);
+};
