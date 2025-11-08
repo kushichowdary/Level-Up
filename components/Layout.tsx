@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { BarChartIcon, SwordsIcon, BookOpenIcon, SettingsIcon, SunIcon, MoonIcon, LogoutIcon } from './Icons';
+import { BarChartIcon, SwordsIcon, BookOpenIcon, SettingsIcon, SunIcon, MoonIcon, LogoutIcon, GithubIcon, LinkedinIcon } from './Icons';
 
 type Page = 'dashboard' | 'goals' | 'history' | 'settings';
 
@@ -66,6 +66,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activePage, setPage })
                     {/* <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-cyan-500/10">
                         {theme === 'dark' ? <SunIcon className="w-6 h-6 text-yellow-400" /> : <MoonIcon className="w-6 h-6 text-slate-300" />}
                     </button> */}
+                </div>
+                 <div className="text-center text-xs text-slate-500 mt-6 pt-4 border-t border-violet-500/10">
+                    <p>Created by Kushwanth</p>
+                    <div className="flex justify-center space-x-4 mt-2">
+                        <a href="https://github.com/kushichowdary" target="_blank" rel="noopener noreferrer" aria-label="Kushwanth's Github profile">
+                            <GithubIcon className="w-5 h-5 text-slate-400 hover:text-cyan-300 transition-all duration-300 transform hover:scale-110" />
+                        </a>
+                        <a href="https://www.linkedin.com/in/kushichowdary" target="_blank" rel="noopener noreferrer" aria-label="Kushwanth's LinkedIn profile">
+                            <LinkedinIcon className="w-5 h-5 text-slate-400 hover:text-cyan-300 transition-all duration-300 transform hover:scale-110" />
+                        </a>
+                    </div>
                 </div>
             </div>
         </>

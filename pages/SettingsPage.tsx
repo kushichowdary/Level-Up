@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { UserSettings } from '../types';
 
 const SettingsPage: React.FC = () => {
     const { settings, updateSettings, completions, goals } = useData();
     const { theme } = useTheme(); // Theme is now fixed to dark
     const { user, updateUser, deleteAccount } = useAuth();
+    const { addNotification } = useNotification();
     
     const [profileName, setProfileName] = useState(user?.name || '');
     const [profileEmail, setProfileEmail] = useState(user?.email || '');
@@ -23,6 +25,7 @@ const SettingsPage: React.FC = () => {
         e.preventDefault();
         if(user && (user.name !== profileName || user.email !== profileEmail)) {
             await updateUser({ ...user, name: profileName, email: profileEmail });
+            addNotification('System Message', 'Player profile has been updated.', 'info');
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
         }

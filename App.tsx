@@ -2,12 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { DataProvider } from './contexts/DataContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import GoalsPage from './pages/TasksPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import { Layout } from './components/Layout';
+import { NotificationContainer } from './components/Notification';
 
 type Page = 'dashboard' | 'goals' | 'history' | 'settings';
 
@@ -55,7 +57,10 @@ const App: React.FC = () => {
         <ThemeProvider>
             <AuthProvider>
                 <DataProvider>
-                    <AppContent />
+                    <NotificationProvider>
+                        <AppContent />
+                        <NotificationContainer />
+                    </NotificationProvider>
                 </DataProvider>
             </AuthProvider>
         </ThemeProvider>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { Goal, GoalStatus, ScheduleType, GoalDifficulty, GoalPriority } from '../types';
 import { PlusIcon } from '../components/Icons';
 
@@ -100,15 +101,22 @@ const GoalForm: React.FC<{ goal?: Goal; onSave: (goal: NewGoalData | Goal) => vo
 
 const GoalsPage: React.FC = () => {
     const { userGoals, addGoal, updateGoal, deleteGoal } = useData();
+    const { addNotification } = useNotification();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | undefined>(undefined);
     
     const handleSave = async (goalData: NewGoalData | Goal) => {
-        if('id' in goalData && goalData.id) {
+        const isEditing = 'id' in goalData && goalData.id;
+        if(isEditing) {
             await updateGoal(goalData as Goal);
         } else {
             await addGoal(goalData as NewGoalData);
         }
+        addNotification(
+            'Quest Log Updated',
+            `'${goalData.title}' has been ${isEditing ? 'updated' : 'added'}.`,
+            'info'
+        );
         setIsFormOpen(false);
         setEditingGoal(undefined);
     }

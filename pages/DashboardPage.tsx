@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { isGoalDueToday, getTodayDateString } from '../utils/dateUtils';
 import { Goal, GoalWithCompletion, CompletionStatus, GoalDifficulty, GoalPriority } from '../types';
 import { CheckCircleIcon, ChevronDownIcon, PlusIcon, TrophyIcon, FlameIcon, CheckSquareIcon, DumbbellIcon, BrainIcon, AlertTriangleIcon } from '../components/Icons';
@@ -134,6 +135,7 @@ const StatCard: React.FC<{icon: React.ElementType, label: string, value: string 
 const DashboardPage: React.FC = () => {
     const { user } = useAuth();
     const { userGoals, systemGoals, completions, completeGoal, loading, levelInfo, userStats } = useData();
+    const { addNotification } = useNotification();
     const [completingGoal, setCompletingGoal] = useState<Goal | null>(null);
     const [showLevelUp, setShowLevelUp] = useState(false);
 
@@ -143,10 +145,11 @@ const DashboardPage: React.FC = () => {
         if (levelInfo && prevLevel && levelInfo.level > prevLevel) {
             setShowLevelUp(true);
             playLevelUpSound();
+            addNotification('LEVEL UP!', `You have reached Level ${levelInfo.level}.`, 'info');
             const timer = setTimeout(() => setShowLevelUp(false), 2500);
             return () => clearTimeout(timer);
         }
-    }, [levelInfo, prevLevel]);
+    }, [levelInfo, prevLevel, addNotification]);
 
     const today = getTodayDateString();
 
@@ -177,9 +180,14 @@ const DashboardPage: React.FC = () => {
     }, [systemGoals, completions, today]);
 
     const handleConfirmComplete = async (goalId: string, note?: string) => {
+        const goal = [...userGoals, ...systemGoals].find(g => g.id === goalId);
+        if (!goal) return;
+        
         await completeGoal(goalId, note);
         setCompletingGoal(null);
         playCompletionSound();
+        const exp = EXP_BY_DIFFICULTY[goal.difficulty];
+        addNotification('Quest Complete', `+${exp} EXP for completing "${goal.title}"`, 'success');
     };
 
     const handleCompleteClick = (goal: Goal) => {

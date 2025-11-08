@@ -62,6 +62,14 @@
               float: {
                 '0%, 100%': { transform: 'translateY(0px)' },
                 '50%': { transform: 'translateY(-10px)' }
+              },
+              slideInRight: {
+                '0%': { transform: 'translateX(100%)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' }
+              },
+              fadeOut: {
+                '0%': { opacity: '1', transform: 'scale(1)' },
+                '100%': { opacity: '0', transform: 'scale(0.95)' }
               }
             },
             animation: {
@@ -73,6 +81,8 @@
               questComplete: 'questComplete 0.6s ease-out forwards',
               checkmarkPop: 'checkmarkPop 0.4s ease-out forwards',
               float: 'float 4s ease-in-out infinite',
+              slideInRight: 'slideInRight 0.4s ease-out forwards',
+              fadeOut: 'fadeOut 0.3s ease-in forwards',
             }
           }
         }
