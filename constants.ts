@@ -63,18 +63,18 @@ export const SYSTEM_GOALS: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'status' |
     },
 ];
 
-export const BASE_EXP_FOR_LEVEL_UP = 150; // Base EXP for level 1 -> 2
-export const LEVEL_SCALING_FACTOR = 1.15; // Each level requires 15% more EXP than the last
+export const BASE_EXP_FOR_LEVEL_UP = 2500; // Base EXP for level 1 -> 2
+export const LEVEL_EXP_INCREMENT = 100; // Each level requires 100 more EXP than the last
 
 export const calculateLevelInfo = (totalExp: number): LevelInfo => {
     let level = 1;
-    let expForNextLevel = BASE_EXP_FOR_LEVEL_UP;
     let cumulativeExpForCurrentLevel = 0;
+    let expForNextLevel = BASE_EXP_FOR_LEVEL_UP;
 
     while (totalExp >= cumulativeExpForCurrentLevel + expForNextLevel) {
         cumulativeExpForCurrentLevel += expForNextLevel;
         level++;
-        expForNextLevel = Math.floor(BASE_EXP_FOR_LEVEL_UP * Math.pow(LEVEL_SCALING_FACTOR, level - 1));
+        expForNextLevel = BASE_EXP_FOR_LEVEL_UP + (level - 1) * LEVEL_EXP_INCREMENT;
     }
 
     const currentLevelExp = totalExp - cumulativeExpForCurrentLevel;

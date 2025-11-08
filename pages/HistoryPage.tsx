@@ -57,6 +57,8 @@ const DashboardHeatmap: React.FC = () => {
     content: null as React.ReactNode,
   });
 
+  // Fix: Explicitly type the initial value for the `reduce` function below to correctly infer the type of `dataByDate`.
+  // This resolves errors where properties on its values were considered 'unknown' later in the component.
   // Group completions by date
   const dataByDate = useMemo(() => {
     return (completions as Completion[]).reduce((acc: Record<string, { completions: Completion[]; totalExp: number }>, c) => {
@@ -65,7 +67,7 @@ const DashboardHeatmap: React.FC = () => {
       acc[c.date].completions.push(c);
       acc[c.date].totalExp += c.expAwarded;
       return acc;
-    }, {});
+    }, {} as Record<string, { completions: Completion[]; totalExp: number }>);
   }, [completions]);
 
   // Build heatmap data
