@@ -174,11 +174,13 @@ const DashboardHeatmap: React.FC = () => {
 
   const hideTooltip = useCallback(() => setTooltip((p) => ({ ...p, visible: false })), []);
 
-  const totalGoals = Object.values(dataByDate).reduce(
+  // Fix: Cast the result of Object.values to ensure proper type inference for the following reduce calls.
+  const dailyData = Object.values(dataByDate) as { completions: Completion[]; totalExp: number }[];
+  const totalGoals = dailyData.reduce(
     (a, b) => a + b.completions.length,
     0
   );
-  const totalExp = Object.values(dataByDate).reduce(
+  const totalExp = dailyData.reduce(
     (a, b) => a + b.totalExp,
     0
   );
