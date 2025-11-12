@@ -388,6 +388,8 @@ export const GridScan: React.FC<GridScanProps> = ({
       const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
       lookTarget.current.set(nx, ny);
+      yawTarget.current = nx;
+      tiltTarget.current = -nx * 0.2; // Add a subtle roll
     };
     const onClick = async () => {
       const nowSec = performance.now() / 1000;
@@ -570,13 +572,23 @@ export const GridScan: React.FC<GridScanProps> = ({
       );
       yawCurrent.current = yawSm.value;
       yawVel.current = yawSm.v;
+      
+      const time = now / 1000;
+
+      // Calculate ambient motion for a more dynamic feel
+      const ambientYaw = Math.sin(time * 0.1) * 0.05;
+      const ambientTilt = Math.cos(time * 0.15) * 0.03;
 
       const skew = new THREE.Vector2(lookCurrent.current.x * skewScale, -lookCurrent.current.y * yBoost * skewScale);
-      material.uniforms.uSkew.value.set(skew.x, skew.y);
-      material.uniforms.uTilt.value = tiltCurrent.current * tiltScale;
-      material.uniforms.uYaw.value = THREE.MathUtils.clamp(yawCurrent.current * yawScale, -0.6, 0.6);
+      
+      // Combine user-driven interaction with ambient motion
+      const finalTilt = tiltCurrent.current * tiltScale + ambientTilt;
+      const finalYaw = THREE.MathUtils.clamp(yawCurrent.current * yawScale, -0.6, 0.6) + ambientYaw;
 
-      material.uniforms.iTime.value = now / 1000;
+      material.uniforms.uSkew.value.set(skew.x, skew.y);
+      material.uniforms.uTilt.value = finalTilt;
+      material.uniforms.uYaw.value = finalYaw;
+      material.uniforms.iTime.value = time;
       
       if (composerRef.current) {
         // The composer's RenderPass handles clearing the screen.
