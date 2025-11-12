@@ -37,6 +37,31 @@ type GridScanProps = {
   style?: React.CSSProperties;
 };
 
+// This ensures that face-api.js and its models are loaded and initialized only once per application lifecycle.
+// It prevents re-initialization errors and potential WebGL context conflicts.
+let faceapiPromise: Promise<any> | null = null;
+const getFaceApi = (modelsPath: string): Promise<any> => {
+    if (!faceapiPromise) {
+        faceapiPromise = (async () => {
+            try {
+                const faceapi = await import('face-api.js');
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelsPath)
+                ]);
+                return faceapi;
+            } catch (error) {
+                console.error("Failed to load face-api.js or its models.", error);
+                // On failure, reset the promise to allow for a retry.
+                faceapiPromise = null;
+                throw error;
+            }
+        })();
+    }
+    return faceapiPromise;
+};
+
+
 const vert = `
 varying vec2 vUv;
 void main(){
@@ -342,7 +367,6 @@ export const GridScan: React.FC<GridScanProps> = ({
   const chromaRef = useRef<ChromaticAberrationEffect | null>(null);
   const rafRef = useRef<number | null>(null);
   
-  const faceapiRef = useRef<any | null>(null);
   const [modelsReady, setModelsReady] = useState(false);
   const [uiFaceActive, setUiFaceActive] = useState(false);
 
@@ -597,7 +621,9 @@ export const GridScan: React.FC<GridScanProps> = ({
         composerRef.current = null;
       }
       renderer.dispose();
-      container.removeChild(renderer.domElement);
+      if(container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
     };
   }, [
     sensitivity,
@@ -678,154 +704,151 @@ export const GridScan: React.FC<GridScanProps> = ({
     };
   }, [enableGyro, uiFaceActive]);
   
+  // Effect to prepare face-api.js when webcam is enabled
   useEffect(() => {
+    if (!enableWebcam) {
+        setModelsReady(false);
+        return;
+    }
     let canceled = false;
-    const loadFaceApiAndModels = async () => {
-        if (!enableWebcam) {
-            setModelsReady(false);
-            faceapiRef.current = null;
-            return;
-        }
-        try {
-            const faceapi = await import('face-api.js');
-            faceapiRef.current = faceapi;
-            await Promise.all([
-              faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
-              faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelsPath)
-            ]);
+    getFaceApi(modelsPath)
+        .then(() => {
             if (!canceled) setModelsReady(true);
-        } catch (e) {
-            console.error("Failed to load face-api.js or its models.", e);
-            if (!canceled) {
-                setModelsReady(false);
-                faceapiRef.current = null;
-            }
-        }
-    };
-    loadFaceApiAndModels();
+        })
+        .catch(() => {
+            if (!canceled) setModelsReady(false);
+        });
     return () => {
         canceled = true;
     };
   }, [modelsPath, enableWebcam]);
 
+  // Effect to run webcam and face detection loop
   useEffect(() => {
+    if (!enableWebcam || !modelsReady) {
+      setUiFaceActive(false);
+      return;
+    }
+
     let stop = false;
-    let lastDetect = 0;
+    let stream: MediaStream | null = null;
+    let animationFrameId: number;
 
     const start = async () => {
-      const faceapi = faceapiRef.current;
-      if (!enableWebcam || !modelsReady || !faceapi) return;
-      const video = videoRef.current;
-      if (!video) return;
-
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const faceapi = await getFaceApi(modelsPath);
+        if (stop) return;
+
+        const video = videoRef.current;
+        if (!video) return;
+
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false
         });
+        if (stop) { stream.getTracks().forEach(t => t.stop()); return; }
+
         video.srcObject = stream;
         await video.play();
-      } catch {
-        return;
-      }
+        
+        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+        let lastDetect = 0;
 
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+        const detect = async () => {
+          if (stop) return;
 
-      const detect = async (ts: number) => {
-        if (stop) return;
+          if (performance.now() - lastDetect >= 33) {
+            lastDetect = performance.now();
+            try {
+              const res = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
+              if (res && res.detection && !stop) {
+                const det = res.detection;
+                const box = det.box;
+                const vw = video.videoWidth || 1;
+                const vh = video.videoHeight || 1;
 
-        if (ts - lastDetect >= 33) {
-          lastDetect = ts;
-          try {
-            const res = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true);
-            if (res && res.detection) {
-              const det = res.detection;
-              const box = det.box;
-              const vw = video.videoWidth || 1;
-              const vh = video.videoHeight || 1;
+                const cx = box.x + box.width * 0.5;
+                const cy = box.y + box.height * 0.5;
+                const nx = (cx / vw) * 2 - 1;
+                const ny = (cy / vh) * 2 - 1;
+                medianPush(bufX.current, nx, 5);
+                medianPush(bufY.current, ny, 5);
+                const nxm = median(bufX.current);
+                const nym = median(bufY.current);
 
-              const cx = box.x + box.width * 0.5;
-              const cy = box.y + box.height * 0.5;
-              const nx = (cx / vw) * 2 - 1;
-              const ny = (cy / vh) * 2 - 1;
-              medianPush(bufX.current, nx, 5);
-              medianPush(bufY.current, ny, 5);
-              const nxm = median(bufX.current);
-              const nym = median(bufY.current);
+                const look = new THREE.Vector2(Math.tanh(nxm), Math.tanh(nym));
 
-              const look = new THREE.Vector2(Math.tanh(nxm), Math.tanh(nym));
+                const faceSize = Math.min(1, Math.hypot(box.width / vw, box.height / vh));
+                const depthScale = 1 + depthResponse * (faceSize - 0.25);
+                lookTarget.current.copy(look.multiplyScalar(depthScale));
 
-              const faceSize = Math.min(1, Math.hypot(box.width / vw, box.height / vh));
-              const depthScale = 1 + depthResponse * (faceSize - 0.25);
-              lookTarget.current.copy(look.multiplyScalar(depthScale));
+                const leftEye = res.landmarks.getLeftEye();
+                const rightEye = res.landmarks.getRightEye();
+                const lc = centroid(leftEye);
+                const rc = centroid(rightEye);
+                const tilt = Math.atan2(rc.y - lc.y, rc.x - lc.x);
+                medianPush(bufT.current, tilt, 5);
+                tiltTarget.current = median(bufT.current);
 
-              const leftEye = res.landmarks.getLeftEye();
-              const rightEye = res.landmarks.getRightEye();
-              const lc = centroid(leftEye);
-              const rc = centroid(rightEye);
-              const tilt = Math.atan2(rc.y - lc.y, rc.x - lc.x);
-              medianPush(bufT.current, tilt, 5);
-              tiltTarget.current = median(bufT.current);
+                const nose = res.landmarks.getNose();
+                const tip = nose[nose.length - 1] || nose[Math.floor(nose.length / 2)];
+                const jaw = res.landmarks.getJawOutline();
+                const leftCheek = jaw[3] || jaw[2];
+                const rightCheek = jaw[13] || jaw[14];
+                const dL = dist2(tip, leftCheek);
+                const dR = dist2(tip, rightCheek);
+                const eyeDist = Math.hypot(rc.x - lc.x, rc.y - lc.y) + 1e-6;
+                let yawSignal = THREE.MathUtils.clamp((dR - dL) / (eyeDist * 1.6), -1, 1);
+                yawSignal = Math.tanh(yawSignal);
+                medianPush(bufYaw.current, yawSignal, 5);
+                yawTarget.current = median(bufYaw.current);
 
-              const nose = res.landmarks.getNose();
-              const tip = nose[nose.length - 1] || nose[Math.floor(nose.length / 2)];
-              const jaw = res.landmarks.getJawOutline();
-              const leftCheek = jaw[3] || jaw[2];
-              const rightCheek = jaw[13] || jaw[14];
-              const dL = dist2(tip, leftCheek);
-              const dR = dist2(tip, rightCheek);
-              const eyeDist = Math.hypot(rc.x - lc.x, rc.y - lc.y) + 1e-6;
-              let yawSignal = THREE.MathUtils.clamp((dR - dL) / (eyeDist * 1.6), -1, 1);
-              yawSignal = Math.tanh(yawSignal);
-              medianPush(bufYaw.current, yawSignal, 5);
-              yawTarget.current = median(bufYaw.current);
-
-              setUiFaceActive(true);
-            } else {
-              setUiFaceActive(false);
+                setUiFaceActive(true);
+              } else if (!stop) {
+                setUiFaceActive(false);
+              }
+            } catch {
+                if(!stop) setUiFaceActive(false);
             }
-          } catch {
-            setUiFaceActive(false);
           }
-        }
+          if(!stop) animationFrameId = requestAnimationFrame(detect);
+        };
+        animationFrameId = requestAnimationFrame(detect);
 
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-          (video as any).requestVideoFrameCallback(() => detect(performance.now()));
-        } else {
-          requestAnimationFrame(detect);
-        }
-      };
-
-      requestAnimationFrame(detect);
+      } catch(err) {
+        console.error("Error starting webcam detection", err);
+        if(!stop) setUiFaceActive(false);
+      }
     };
 
     start();
 
     return () => {
       stop = true;
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (stream) stream.getTracks().forEach(t => t.stop());
       const video = videoRef.current;
       if (video) {
-        const stream = video.srcObject as MediaStream | null;
-        if (stream) stream.getTracks().forEach(t => t.stop());
         video.pause();
         video.srcObject = null;
       }
     };
-  }, [enableWebcam, modelsReady, depthResponse]);
+  }, [enableWebcam, modelsReady, depthResponse, modelsPath]);
+
 
   return (
     <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className ?? ''}`} style={style}>
-      {showPreview && (
+      {showPreview && enableWebcam && (
         <div className="absolute right-3 bottom-3 w-[220px] h-[132px] rounded-lg overflow-hidden border border-white/25 shadow-[0_4px_16px_rgba(0,0,0,0.4)] bg-black text-white text-[12px] leading-[1.2] font-sans pointer-events-none">
           <video ref={videoRef} muted playsInline autoPlay className="w-full h-full object-cover -scale-x-100" />
           <div className="absolute left-2 top-2 px-[6px] py-[2px] bg-black/50 rounded-[6px] backdrop-blur-[4px]">
-            {enableWebcam
-              ? modelsReady
+            {
+              modelsReady
                 ? uiFaceActive
                   ? 'Face: tracking'
                   : 'Face: searching'
-                : faceapiRef.current ? 'Loading models' : 'Initializing...'
-              : 'Webcam disabled'}
+                : 'Loading models...'
+            }
           </div>
         </div>
       )}
