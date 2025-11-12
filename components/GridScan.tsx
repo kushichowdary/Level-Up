@@ -445,6 +445,8 @@ export const GridScan: React.FC<GridScanProps> = ({
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.autoClear = false;
     renderer.setClearColor(0x000000, 0);
+    // Initialize with a non-zero size to prevent framebuffer errors on load.
+    renderer.setSize(1, 1, false);
     container.appendChild(renderer.domElement);
 
     const uniforms = {
@@ -567,10 +569,13 @@ export const GridScan: React.FC<GridScanProps> = ({
       material.uniforms.uYaw.value = THREE.MathUtils.clamp(yawCurrent.current * yawScale, -0.6, 0.6);
 
       material.uniforms.iTime.value = now / 1000;
-      renderer.clear(true, true, true);
+      
       if (composerRef.current) {
+        // The composer's RenderPass handles clearing the screen.
         composerRef.current.render(dt);
       } else {
+        // If not using post-processing, we must clear manually since autoClear is off.
+        renderer.clear();
         renderer.render(scene, camera);
       }
       rafRef.current = requestAnimationFrame(tick);
