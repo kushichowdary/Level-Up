@@ -341,8 +341,8 @@ export const GridScan: React.FC<GridScanProps> = ({
   const bloomRef = useRef<BloomEffect | null>(null);
   const chromaRef = useRef<ChromaticAberrationEffect | null>(null);
   const rafRef = useRef<number | null>(null);
-
-  const [faceapi, setFaceapi] = useState<any | null>(null);
+  
+  const faceapiRef = useRef<any | null>(null);
   const [modelsReady, setModelsReady] = useState(false);
   const [uiFaceActive, setUiFaceActive] = useState(false);
 
@@ -677,43 +677,43 @@ export const GridScan: React.FC<GridScanProps> = ({
       window.removeEventListener('deviceorientation', handler);
     };
   }, [enableGyro, uiFaceActive]);
-
+  
   useEffect(() => {
-    if (enableWebcam) {
-      import('face-api.js').then(api => {
-        setFaceapi(api);
-      });
-    }
-  }, [enableWebcam]);
-
-  useEffect(() => {
-    if (!enableWebcam || !faceapi) {
-        setModelsReady(false);
-        return;
-    }
     let canceled = false;
-    const load = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelsPath)
-        ]);
-        if (!canceled) setModelsReady(true);
-      } catch {
-        if (!canceled) setModelsReady(false);
-      }
+    const loadFaceApiAndModels = async () => {
+        if (!enableWebcam) {
+            setModelsReady(false);
+            faceapiRef.current = null;
+            return;
+        }
+        try {
+            const faceapi = await import('face-api.js');
+            faceapiRef.current = faceapi;
+            await Promise.all([
+              faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
+              faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelsPath)
+            ]);
+            if (!canceled) setModelsReady(true);
+        } catch (e) {
+            console.error("Failed to load face-api.js or its models.", e);
+            if (!canceled) {
+                setModelsReady(false);
+                faceapiRef.current = null;
+            }
+        }
     };
-    load();
+    loadFaceApiAndModels();
     return () => {
-      canceled = true;
+        canceled = true;
     };
-  }, [modelsPath, enableWebcam, faceapi]);
+  }, [modelsPath, enableWebcam]);
 
   useEffect(() => {
     let stop = false;
     let lastDetect = 0;
 
     const start = async () => {
+      const faceapi = faceapiRef.current;
       if (!enableWebcam || !modelsReady || !faceapi) return;
       const video = videoRef.current;
       if (!video) return;
@@ -811,7 +811,7 @@ export const GridScan: React.FC<GridScanProps> = ({
         video.srcObject = null;
       }
     };
-  }, [enableWebcam, modelsReady, faceapi, depthResponse]);
+  }, [enableWebcam, modelsReady, depthResponse]);
 
   return (
     <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className ?? ''}`} style={style}>
@@ -824,7 +824,7 @@ export const GridScan: React.FC<GridScanProps> = ({
                 ? uiFaceActive
                   ? 'Face: tracking'
                   : 'Face: searching'
-                : faceapi ? 'Loading models' : 'Initializing...'
+                : faceapiRef.current ? 'Loading models' : 'Initializing...'
               : 'Webcam disabled'}
           </div>
         </div>
