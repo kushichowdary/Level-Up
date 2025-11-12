@@ -104,6 +104,46 @@ float smoother01(float a, float b, float x){
   return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
 }
 
+float getLineMask(vec2 gridUV, vec4 jitterParams) {
+    float jitterAmt = clamp(uLineJitter, 0.0, 1.0);
+    if (jitterAmt > 0.0) {
+        vec2 j = vec2(
+            sin(gridUV.y * jitterParams.x + iTime * jitterParams.y),
+            cos(gridUV.x * jitterParams.z - iTime * jitterParams.w)
+        ) * (0.15 * jitterAmt);
+        gridUV += j;
+    }
+    
+    float fx = fract(gridUV.x);
+    float fy = fract(gridUV.y);
+    float ax = min(fx, 1.0 - fx);
+    float ay = min(fy, 1.0 - fy);
+    float wx = fwidth(gridUV.x);
+    float wy = fwidth(gridUV.y);
+    float halfPx = max(0.0, uLineThickness) * 0.5;
+    float tx = halfPx * wx;
+    float ty = halfPx * wy;
+    float lineX = 1.0 - smoothstep(tx, tx + wx, ax);
+    float lineY = 1.0 - smoothstep(ty, ty + wy, ay);
+
+    if (uLineStyle > 0.5) { // Dashed or Dotted
+        if (uLineStyle < 1.5) { // Dashed
+            float dashRepeat = 4.0;
+            float dashDuty = 0.5;
+            lineX *= step(fract(gridUV.y * dashRepeat), dashDuty);
+            lineY *= step(fract(gridUV.x * dashRepeat), dashDuty);
+        } else { // Dotted
+            float dotRepeat = 6.0;
+            float dotWidth = 0.18;
+            float cy = abs(fract(gridUV.y * dotRepeat) - 0.5);
+            float cx = abs(fract(gridUV.x * dotRepeat) - 0.5);
+            lineX *= 1.0 - smoothstep(dotWidth, dotWidth + fwidth(gridUV.y * dotRepeat), cy);
+            lineY *= 1.0 - smoothstep(dotWidth, dotWidth + fwidth(gridUV.x * dotRepeat), cx);
+        }
+    }
+    return max(lineX, lineY);
+}
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
     vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
@@ -121,12 +161,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     rd.xy += skew * rd.z;
 
     vec3 color = vec3(0.0);
-  float minT = 1e20;
-  float gridScale = max(1e-5, uGridScale);
+    float minT = 1e20;
+    float gridScale = max(1e-5, uGridScale);
     float fadeStrength = 2.0;
     vec2 gridUV = vec2(0.0);
 
-  float hitIsY = 1.0;
+    float hitIsY = 1.0;
     for (int i = 0; i < 4; i++)
     {
         float isY = float(i < 2);
@@ -139,104 +179,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         float depthBoost = smoothstep(0.0, 3.0, h.z);
         h.xy += skew * 0.15 * depthBoost;
 
-    bool use = t > 0.0 && t < minT;
-    gridUV = use ? mix(h.zy, h.xz, isY) / gridScale : gridUV;
-    minT = use ? t : minT;
-    hitIsY = use ? isY : hitIsY;
+        bool use = t > 0.0 && t < minT;
+        gridUV = use ? mix(h.zy, h.xz, isY) / gridScale : gridUV;
+        minT = use ? t : minT;
+        hitIsY = use ? isY : hitIsY;
     }
 
     vec3 hit = ro + rd * minT;
     float dist = length(hit - ro);
-
-  float jitterAmt = clamp(uLineJitter, 0.0, 1.0);
-  if (jitterAmt > 0.0) {
-    vec2 j = vec2(
-      sin(gridUV.y * 2.7 + iTime * 1.8),
-      cos(gridUV.x * 2.3 - iTime * 1.6)
-    ) * (0.15 * jitterAmt);
-    gridUV += j;
-  }
-  float fx = fract(gridUV.x);
-  float fy = fract(gridUV.y);
-  float ax = min(fx, 1.0 - fx);
-  float ay = min(fy, 1.0 - fy);
-  float wx = fwidth(gridUV.x);
-  float wy = fwidth(gridUV.y);
-  float halfPx = max(0.0, uLineThickness) * 0.5;
-
-  float tx = halfPx * wx;
-  float ty = halfPx * wy;
-
-  float aax = wx;
-  float aay = wy;
-
-  float lineX = 1.0 - smoothstep(tx, tx + aax, ax);
-  float lineY = 1.0 - smoothstep(ty, ty + aay, ay);
-  if (uLineStyle > 0.5) {
-    float dashRepeat = 4.0;
-    float dashDuty = 0.5;
-    float vy = fract(gridUV.y * dashRepeat);
-    float vx = fract(gridUV.x * dashRepeat);
-    float dashMaskY = step(vy, dashDuty);
-    float dashMaskX = step(vx, dashDuty);
-    if (uLineStyle < 1.5) {
-      lineX *= dashMaskY;
-      lineY *= dashMaskX;
-    } else {
-      float dotRepeat = 6.0;
-      float dotWidth = 0.18;
-      float cy = abs(fract(gridUV.y * dotRepeat) - 0.5);
-      float cx = abs(fract(gridUV.x * dotRepeat) - 0.5);
-      float dotMaskY = 1.0 - smoothstep(dotWidth, dotWidth + fwidth(gridUV.y * dotRepeat), cy);
-      float dotMaskX = 1.0 - smoothstep(dotWidth, dotWidth + fwidth(gridUV.x * dotRepeat), cx);
-      lineX *= dotMaskY;
-      lineY *= dotMaskX;
-    }
-  }
-  float primaryMask = max(lineX, lineY);
-
-  vec2 gridUV2 = (hitIsY > 0.5 ? hit.xz : hit.zy) / gridScale;
-  if (jitterAmt > 0.0) {
-    vec2 j2 = vec2(
-      cos(gridUV2.y * 2.1 - iTime * 1.4),
-      sin(gridUV2.x * 2.5 + iTime * 1.7)
-    ) * (0.15 * jitterAmt);
-    gridUV2 += j2;
-  }
-  float fx2 = fract(gridUV2.x);
-  float fy2 = fract(gridUV2.y);
-  float ax2 = min(fx2, 1.0 - fx2);
-  float ay2 = min(fy2, 1.0 - fy2);
-  float wx2 = fwidth(gridUV2.x);
-  float wy2 = fwidth(gridUV2.y);
-  float tx2 = halfPx * wx2;
-  float ty2 = halfPx * wy2;
-  float aax2 = wx2;
-  float aay2 = wy2;
-  float lineX2 = 1.0 - smoothstep(tx2, tx2 + aax2, ax2);
-  float lineY2 = 1.0 - smoothstep(ty2, ty2 + aay2, ay2);
-  if (uLineStyle > 0.5) {
-    float dashRepeat2 = 4.0;
-    float dashDuty2 = 0.5;
-    float vy2m = fract(gridUV2.y * dashRepeat2);
-    float vx2m = fract(gridUV2.x * dashRepeat2);
-    float dashMaskY2 = step(vy2m, dashDuty2);
-    float dashMaskX2 = step(vx2m, dashDuty2);
-    if (uLineStyle < 1.5) {
-      lineX2 *= dashMaskY2;
-      lineY2 *= dashMaskX2;
-    } else {
-      float dotRepeat2 = 6.0;
-      float dotWidth2 = 0.18;
-      float cy2 = abs(fract(gridUV2.y * dotRepeat2) - 0.5);
-      float cx2 = abs(fract(gridUV2.x * dotRepeat2) - 0.5);
-      float dotMaskY2 = 1.0 - smoothstep(dotWidth2, dotWidth2 + fwidth(gridUV2.y * dotRepeat2), cy2);
-      float dotMaskX2 = 1.0 - smoothstep(dotWidth2, dotWidth2 + fwidth(gridUV2.x * dotRepeat2), cx2);
-      lineX2 *= dotMaskY2;
-      lineY2 *= dotMaskX2;
-    }
-  }
-    float altMask = max(lineX2, lineY2);
+    
+    float primaryMask = getLineMask(gridUV, vec4(2.7, 1.8, 2.3, 1.6));
+    
+    vec2 gridUV2 = (hitIsY > 0.5 ? hit.xz : hit.zy) / gridScale;
+    float altMask = getLineMask(gridUV2, vec4(2.1, 1.4, 2.5, 1.7));
 
     float edgeDistX = min(abs(hit.x - (-0.5)), abs(hit.x - 0.5));
     float edgeDistY = min(abs(hit.y - (-0.2)), abs(hit.y - 0.2));
@@ -244,7 +199,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float edgeGate = 1.0 - smoothstep(gridScale * 0.5, gridScale * 2.0, edgeDist);
     altMask *= edgeGate;
 
-  float lineMask = max(primaryMask, altMask);
+    float lineMask = max(primaryMask, altMask);
 
     float fade = exp(-dist * fadeStrength);
 
@@ -302,22 +257,28 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
       combinedAura += (auraBandI * 0.25) * phaseWindowI * clamp(uScanOpacity, 0.0, 1.0);
     }
 
-  float lineVis = lineMask;
-  vec3 gridCol = uLinesColor * lineVis * fade;
-  vec3 scanCol = uScanColor * combinedPulse;
-  vec3 scanAura = uScanColor * combinedAura;
+    float lineVis = lineMask;
+    vec3 gridCol = uLinesColor * lineVis * fade;
+    vec3 scanCol = uScanColor * combinedPulse;
+    vec3 scanAura = uScanColor * combinedAura;
 
     color = gridCol + scanCol + scanAura;
 
-  float n = fract(sin(dot(gl_FragCoord.xy + vec2(iTime * 123.4), vec2(12.9898,78.233))) * 43758.5453123);
-  color += (n - 0.5) * uNoise;
-  color = clamp(color, 0.0, 1.0);
-  float alpha = clamp(max(lineVis, combinedPulse), 0.0, 1.0);
-  float gx = 1.0 - smoothstep(tx * 2.0, tx * 2.0 + aax * 2.0, ax);
-  float gy = 1.0 - smoothstep(ty * 2.0, ty * 2.0 + aay * 2.0, ay);
-  float halo = max(gx, gy) * fade;
-  alpha = max(alpha, halo * clamp(uBloomOpacity, 0.0, 1.0));
-  fragColor = vec4(color, alpha);
+    float n = fract(sin(dot(gl_FragCoord.xy + vec2(iTime * 123.4), vec2(12.9898,78.233))) * 43758.5453123);
+    color += (n - 0.5) * uNoise;
+    color = clamp(color, 0.0, 1.0);
+    float alpha = clamp(max(lineVis, combinedPulse), 0.0, 1.0);
+    float ax = min(fract(gridUV.x), 1.0 - fract(gridUV.x));
+    float ay = min(fract(gridUV.y), 1.0 - fract(gridUV.y));
+    float wx = fwidth(gridUV.x);
+    float wy = fwidth(gridUV.y);
+    float tx = max(0.0, uLineThickness) * 0.5 * wx;
+    float ty = max(0.0, uLineThickness) * 0.5 * wy;
+    float gx = 1.0 - smoothstep(tx * 2.0, tx * 2.0 + wx * 2.0, ax);
+    float gy = 1.0 - smoothstep(ty * 2.0, ty * 2.0 + wy * 2.0, ay);
+    float halo = max(gx, gy) * fade;
+    alpha = max(alpha, halo * clamp(uBloomOpacity, 0.0, 1.0));
+    fragColor = vec4(color, alpha);
 }
 
 void main(){
