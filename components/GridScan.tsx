@@ -440,6 +440,14 @@ export const GridScan: React.FC<GridScanProps> = ({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     rendererRef.current = renderer;
+    
+    // Style the canvas to ensure it fills the container, preventing sizing race conditions.
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
@@ -523,7 +531,7 @@ export const GridScan: React.FC<GridScanProps> = ({
       if (entry) {
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
-            renderer.setSize(width, height);
+            renderer.setSize(width, height, false); // Set 'false' to avoid style updates
             material.uniforms.iResolution.value.set(width, height, renderer.getPixelRatio());
             if (composer) composer.setSize(width, height);
         }

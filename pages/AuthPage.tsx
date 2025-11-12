@@ -74,7 +74,7 @@ const AuthPage: React.FC = () => {
     const inputClasses = "w-full bg-slate-800/50 text-slate-200 placeholder-slate-500 border border-slate-700 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all disabled:opacity-50";
 
     return (
-        <div className="min-h-screen relative">
+        <div className="w-screen h-screen relative">
             <GridScan
                 className="absolute inset-0 w-full h-full z-0"
                 linesColor="#2e1065" // tailwind violet-950
