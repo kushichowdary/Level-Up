@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { EffectComposer, RenderPass, EffectPass, BloomEffect, ChromaticAberrationEffect } from 'postprocessing';
 import * as THREE from 'three';
-import * as faceapi from 'face-api.js';
 
 type GridScanProps = {
   enableWebcam?: boolean;
@@ -343,6 +342,7 @@ export const GridScan: React.FC<GridScanProps> = ({
   const chromaRef = useRef<ChromaticAberrationEffect | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  const [faceapi, setFaceapi] = useState<any | null>(null);
   const [modelsReady, setModelsReady] = useState(false);
   const [uiFaceActive, setUiFaceActive] = useState(false);
 
@@ -679,6 +679,18 @@ export const GridScan: React.FC<GridScanProps> = ({
   }, [enableGyro, uiFaceActive]);
 
   useEffect(() => {
+    if (enableWebcam) {
+      import('face-api.js').then(api => {
+        setFaceapi(api);
+      });
+    }
+  }, [enableWebcam]);
+
+  useEffect(() => {
+    if (!enableWebcam || !faceapi) {
+        setModelsReady(false);
+        return;
+    }
     let canceled = false;
     const load = async () => {
       try {
@@ -695,14 +707,14 @@ export const GridScan: React.FC<GridScanProps> = ({
     return () => {
       canceled = true;
     };
-  }, [modelsPath]);
+  }, [modelsPath, enableWebcam, faceapi]);
 
   useEffect(() => {
     let stop = false;
     let lastDetect = 0;
 
     const start = async () => {
-      if (!enableWebcam || !modelsReady) return;
+      if (!enableWebcam || !modelsReady || !faceapi) return;
       const video = videoRef.current;
       if (!video) return;
 
@@ -799,7 +811,7 @@ export const GridScan: React.FC<GridScanProps> = ({
         video.srcObject = null;
       }
     };
-  }, [enableWebcam, modelsReady, depthResponse]);
+  }, [enableWebcam, modelsReady, faceapi, depthResponse]);
 
   return (
     <div ref={containerRef} className={`relative w-full h-full overflow-hidden ${className ?? ''}`} style={style}>
@@ -812,7 +824,7 @@ export const GridScan: React.FC<GridScanProps> = ({
                 ? uiFaceActive
                   ? 'Face: tracking'
                   : 'Face: searching'
-                : 'Loading models'
+                : faceapi ? 'Loading models' : 'Initializing...'
               : 'Webcam disabled'}
           </div>
         </div>
