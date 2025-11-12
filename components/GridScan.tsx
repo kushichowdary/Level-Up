@@ -441,7 +441,6 @@ export const GridScan: React.FC<GridScanProps> = ({
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     rendererRef.current = renderer;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.autoClear = false;
@@ -450,7 +449,7 @@ export const GridScan: React.FC<GridScanProps> = ({
 
     const uniforms = {
       iResolution: {
-        value: new THREE.Vector3(container.clientWidth, container.clientHeight, renderer.getPixelRatio())
+        value: new THREE.Vector3(1, 1, renderer.getPixelRatio())
       },
       iTime: { value: 0 },
       uSkew: { value: new THREE.Vector2(0, 0) },
@@ -517,12 +516,18 @@ export const GridScan: React.FC<GridScanProps> = ({
       composer.addPass(effectPass);
     }
 
-    const onResize = () => {
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      material.uniforms.iResolution.value.set(container.clientWidth, container.clientHeight, renderer.getPixelRatio());
-      if (composerRef.current) composerRef.current.setSize(container.clientWidth, container.clientHeight);
-    };
-    window.addEventListener('resize', onResize);
+    const resizeObserver = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (entry) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+            renderer.setSize(width, height);
+            material.uniforms.iResolution.value.set(width, height, renderer.getPixelRatio());
+            if (composer) composer.setSize(width, height);
+        }
+      }
+    });
+    resizeObserver.observe(container);
 
     let last = performance.now();
     const tick = () => {
@@ -574,7 +579,7 @@ export const GridScan: React.FC<GridScanProps> = ({
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', onResize);
+      resizeObserver.disconnect();
       material.dispose();
       (quad.geometry as THREE.BufferGeometry).dispose();
       if (composerRef.current) {
