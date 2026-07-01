@@ -15,6 +15,8 @@ const getFirebaseErrorMessage = (errorCode: string): string => {
             return 'Password should be at least 6 characters.';
         case 'auth/invalid-email':
             return 'Please enter a valid email address.';
+        case 'auth/unauthorized-domain':
+            return 'The deployed site is not authorized in Firebase Auth. Add your domain to Firebase authorized domains.';
         case 'auth/network-request-failed':
             return 'Network error. Please check your connection.';
         default:

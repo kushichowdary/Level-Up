@@ -29,28 +29,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      const fallbackName = pendingNameRef.current || firebaseUser.email?.split('@')[0] || 'Player';
+      let userProfile: User | null = null;
+
       try {
-        let userProfile = await api.getUserProfile(firebaseUser.uid);
+        userProfile = await api.getUserProfile(firebaseUser.uid);
+      } catch (profileError) {
+        console.warn('Unable to load user profile after auth:', profileError);
+      }
 
-        if (!userProfile) {
-          const name = pendingNameRef.current || firebaseUser.email?.split('@')[0] || 'Player';
-          const isNewUser = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
+      if (!userProfile) {
+        const isNewUser = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
 
-          if (!isNewUser) {
-            console.warn(`User ${firebaseUser.uid} is authenticated but has no profile. Recreating profile.`);
-          }
-
-          userProfile = await api.createUserProfile(firebaseUser, name);
+        if (!isNewUser) {
+          console.warn(`User ${firebaseUser.uid} is authenticated but has no profile. Recreating profile.`);
         }
 
-        setUser(userProfile);
-      } catch (error) {
-        console.error('Failed to handle auth state change:', error);
-        setUser(null);
-      } finally {
-        pendingNameRef.current = null;
-        setLoading(false);
+        try {
+          userProfile = await api.createUserProfile(firebaseUser, fallbackName);
+        } catch (createError) {
+          console.error('Unable to create user profile after auth:', createError);
+        }
       }
+
+      if (userProfile) {
+        setUser(userProfile);
+      } else {
+        setUser({
+          id: firebaseUser.uid,
+          name: fallbackName,
+          email: firebaseUser.email || '',
+          createdAt: firebaseUser.metadata.creationTime || new Date().toISOString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+      }
+
+      pendingNameRef.current = null;
+      setLoading(false);
     });
 
     return () => unsubscribe();
