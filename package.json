@@ -11,7 +11,7 @@
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "three": "^0.166.1",
+    "three": "^0.168.0",
     "postprocessing": "^6.35.4",
     "face-api.js": "^0.22.2",
     "firebase": "^12.5.0"

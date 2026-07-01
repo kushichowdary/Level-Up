@@ -55,9 +55,11 @@ const AuthPage: React.FC = () => {
                 await signup(name, email, password);
             }
         } catch (e: unknown) {
-            if (e instanceof Error && 'code' in e) {
+            if (typeof e === 'object' && e !== null && 'code' in e) {
                  const authError = e as AuthError;
                  setError(getFirebaseErrorMessage(authError.code));
+            } else if (e instanceof Error) {
+                 setError(e.message || 'An unexpected error occurred.');
             } else {
                  setError('An unexpected error occurred.');
             }

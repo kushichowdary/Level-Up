@@ -23,34 +23,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = api.onAuthStateChanged(async (firebaseUser: FirebaseUser | null) => {
-      try {
-        if (firebaseUser) {
-          let userProfile = await api.getUserProfile(firebaseUser.uid);
-          
-          if (!userProfile) {
-            const isNewUser = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
+      if (!firebaseUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-            // Only warn if this is an existing user with a missing profile.
-            // For a new user, this is the expected flow, not a warning condition.
-            if (!isNewUser) {
-              console.warn(`User ${firebaseUser.uid} is authenticated but has no profile. Recreating profile.`);
-            }
-            
-            const name = pendingNameRef.current || firebaseUser.email?.split('@')[0] || 'Player';
-            userProfile = await api.createUserProfile(firebaseUser, name);
-            if (pendingNameRef.current) {
-                pendingNameRef.current = null; // Clear the pending name after use
-            }
+      try {
+        let userProfile = await api.getUserProfile(firebaseUser.uid);
+
+        if (!userProfile) {
+          const name = pendingNameRef.current || firebaseUser.email?.split('@')[0] || 'Player';
+          const isNewUser = firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime;
+
+          if (!isNewUser) {
+            console.warn(`User ${firebaseUser.uid} is authenticated but has no profile. Recreating profile.`);
           }
-          setUser(userProfile);
-        } else {
-          setUser(null);
+
+          userProfile = await api.createUserProfile(firebaseUser, name);
         }
+
+        setUser(userProfile);
       } catch (error) {
-          console.error("Failed to handle auth state change:", error);
-          // If any error occurs, ensure the user is logged out to prevent an inconsistent state
-          setUser(null);
+        console.error('Failed to handle auth state change:', error);
+        setUser(null);
       } finally {
+        pendingNameRef.current = null;
         setLoading(false);
       }
     });

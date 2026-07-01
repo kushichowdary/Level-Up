@@ -37,11 +37,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchData = useCallback(async (currentUser: User) => {
     setLoading(true);
-    const data = await api.fetchAllData(currentUser.id);
-    setGoals(data.goals);
-    setCompletions(data.completions);
-    setSettings(data.settings);
-    setLoading(false);
+    try {
+      const data = await api.fetchAllData(currentUser.id);
+      setGoals(data.goals);
+      setCompletions(data.completions);
+      setSettings(data.settings);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+      setGoals([]);
+      setCompletions([]);
+      setSettings(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
